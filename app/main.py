@@ -4,9 +4,9 @@ import argparse
 import sys
 from datetime import datetime
 
-from services.scraper import PrefeituraScraper
-from services.uploader import FileUploader0x0st  
-from core.database import DatabaseManager
+# Imports simplificados usando os __init__.py
+from services import PrefeituraScraper, FileUploader0x0st
+from core import DatabaseManager
 
 logging.basicConfig(
     level=logging.INFO,
