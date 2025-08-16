@@ -14,11 +14,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
     xvfb \
-    # Dependências mínimas e modernas para o Chrome headless
+    # Dependências essenciais para o Chrome/ChromeDriver funcionar
     libnss3 \
     libxss1 \
     libasound2 \
-    libxtst6 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libx11-xcb1 \
+    libxrandr2 \
     fonts-liberation \
     # Adiciona o repositório do Google Chrome
     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg \
@@ -47,9 +50,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ /app/
 
-# Cria o diretório de downloads com as permissões corretas
 RUN mkdir -p /app/downloads && chmod -R 777 /app/downloads
-
-EXPOSE 8000
 
 CMD ["python", "main.py"]

@@ -1,27 +1,7 @@
 version: '3.8'
 
 services:
-  api:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    ports:
-      - "8000:8000"
-    volumes:
-      - ../downloads:/app/downloads
-    environment:
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=natal_prefeitura
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-    command: python main.py --api-only
-  
-  # Este serviço executa o scraping e depois para.
+  # O scraper executa primeiro como uma tarefa única
   scraper:
     build:
       context: ..
@@ -37,8 +17,31 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # O comando padrão do Dockerfile (python main.py) será executado
-    
+    # Este serviço não tem 'restart' e irá parar após a execução
+
+  # A API sobe depois que o scraper depende dela
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    # Usa o comando para iniciar apenas a API
+    command: python main.py --api-only
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../downloads:/app/downloads
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=natal_prefeitura
+    depends_on:
+      scraper:
+        # A API só inicia depois que o scraper finalizar com sucesso
+        condition: service_completed_successfully
+    restart: unless-stopped
+
   db:
     image: postgres:14
     volumes:
