@@ -6,37 +6,39 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Instala o Google Chrome e o ChromeDriver correspondente
+# Instala dependências, Google Chrome e o ChromeDriver correspondente
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Ferramentas essenciais
     curl \
     gnupg \
     wget \
     unzip \
     xvfb \
-    # Dependências do Chrome
-    libgconf-2-4 \
+    # Dependências mínimas e modernas para o Chrome headless
     libnss3 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
+    libxss1 \
+    libasound2 \
+    libxtst6 \
+    fonts-liberation \
+    # Adiciona o repositório do Google Chrome
     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg \
     && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+    # Instala o Chrome e o ChromeDriver
     && apt-get update \
     && apt-get install -y google-chrome-stable \
-    && CHROME_VERSION=$(google-chrome --version | cut -d " " -f3 | cut -d "." -f1) \
-    && CHROME_DRIVER_VERSION=$(wget -qO- https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION}) \
-    && wget https://chromedriver.storage.googleapis.com/${CHROME_DRIVER_VERSION}/chromedriver_linux64.zip \
-    && unzip chromedriver_linux64.zip \
-    && mv chromedriver /usr/bin/chromedriver \
+    && CHROME_VERSION=$(google-chrome --version | cut -d " " -f3) \
+    && echo "Chrome Version: $CHROME_VERSION" \
+    && CHROME_DRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_${CHROME_VERSION%%.*}") \
+    && echo "ChromeDriver Version: $CHROME_DRIVER_VERSION" \
+    && wget https://storage.googleapis.com/chrome-for-testing-public/${CHROME_DRIVER_VERSION}/linux64/chromedriver-linux64.zip \
+    && unzip chromedriver-linux64.zip \
+    && mv chromedriver-linux64/chromedriver /usr/bin/chromedriver \
     && chown root:root /usr/bin/chromedriver \
     && chmod +x /usr/bin/chromedriver \
-    && rm chromedriver_linux64.zip \
+    # Limpeza
+    && rm chromedriver-linux64.zip \
+    && rm -rf chromedriver-linux64 \
+    && apt-get purge -y --auto-remove curl gnupg wget unzip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -45,8 +47,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ /app/
 
-# Cria o diretório de downloads
-RUN mkdir -p /app/downloads && chmod 777 /app/downloads
+# Cria o diretório de downloads com as permissões corretas
+RUN mkdir -p /app/downloads && chmod -R 777 /app/downloads
 
 EXPOSE 8000
 
