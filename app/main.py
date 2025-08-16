@@ -4,6 +4,10 @@ import argparse
 import sys
 from datetime import datetime
 
+from services.scraper import PrefeituraScraper
+from services.uploader import FileUploader0x0st  
+from core.database import DatabaseManager
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -19,58 +23,53 @@ def run_full_process(headless=True):
     logger.info(f"🚀 Iniciando processo completo às {start_time}")
     
     try:
-        try:
-            from scraper_fix import PrefeituraScraper
-            from uploader_fix import FileUploader
-            from database import DatabaseManager
-        except ImportError as e:
-            logger.error(f"❌ Erro ao importar módulos: {str(e)}")
-            return False
         logger.info("🔍 Iniciando scraping do site da prefeitura")
         scraper = PrefeituraScraper(headless=headless)
         publications = scraper.run()
         
         if not publications:
             logger.warning("⚠️ Nenhuma publicação encontrada")
-            return False
+            return True
         
         logger.info(f"✅ Scraping concluído. {len(publications)} publicações encontradas")
 
-        logger.info("📤 Iniciando upload dos arquivos")
-        uploader = FileUploader(simulate_success=True)  
-        uploaded_publications = uploader.upload_multiple_files(publications)
+        logger.info("📤 Iniciando upload dos arquivos para 0x0.st")
+        uploader = FileUploader0x0st()
         
-        if not uploaded_publications:
-            logger.warning("⚠️ Nenhum arquivo foi enviado com sucesso")
+        file_paths = [pub.get('file_path') for pub in publications if pub.get('file_path')]
+        
+        if not file_paths:
+            logger.warning("⚠️ Nenhum arquivo encontrado para upload")
             return False
+ 
+        uploaded_urls = uploader.upload_multiple_files(file_paths)
         
-        logger.info(f"✅ Upload concluído. {len(uploaded_publications)} arquivos enviados")
+        if not uploaded_urls:
+            logger.warning("⚠️ Nenhum arquivo foi enviado com sucesso para 0x0.st")
+            return False
+
+        for i, pub in enumerate(publications):
+            if i < len(uploaded_urls):
+                pub['file_url'] = uploaded_urls[i]
+        
+        logger.info(f"✅ Upload concluído. {len(uploaded_urls)} arquivos enviados para 0x0.st")
 
         logger.info("💾 Iniciando armazenamento no banco de dados")
         try:
             db_manager = DatabaseManager()
-            saved_count = db_manager.save_publications(uploaded_publications)
+            saved_count = db_manager.save_publications(publications)
             logger.info(f"✅ Armazenamento concluído. {saved_count} publicações salvas")
         except Exception as db_error:
             logger.warning(f"⚠️ Erro no banco de dados: {str(db_error)}")
             logger.info("📋 Continuando sem salvar no banco - dados disponíveis em memória")
-            saved_count = len(uploaded_publications)
+            saved_count = len(publications)
 
         end_time = datetime.now()
         duration = end_time - start_time
         logger.info(f"🎉 Processo concluído com sucesso em {duration}")
-
-        print("\n" + "="*60)
-        print("📊 RESUMO DO PROCESSO")
-        print("="*60)
-        print(f"🔍 Publicações encontradas: {len(publications)}")
-        print(f"📤 Arquivos processados: {len(uploaded_publications)}")
-        print(f"💾 Registros salvos: {saved_count}")
-        print(f"⏱️ Tempo total: {duration}")
-        print("="*60)
         
         return True
-    
+                
     except Exception as e:
         logger.error(f"❌ Erro durante a execução do processo: {str(e)}")
         import traceback
