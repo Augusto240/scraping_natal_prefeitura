@@ -2,8 +2,8 @@ app = "scraping-natal-prefeitura"
 primary_region = "gru"
 
 [build]
-  dockerfile = "Dockerfile.simple"
-
+  dockerfile = "Dockerfile.simple"  
+  
 [env]
   PORT = "8000"
   PYTHONUNBUFFERED = "1"
