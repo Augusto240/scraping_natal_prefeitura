@@ -11,9 +11,12 @@ primary_region = "gru"
 [http_service]
   internal_port = 8000
   force_https = true
+  processes = ["app"]
 
 [deploy]
-  release_command = "python -c 'print(\"API mode only - Scraper disabled\")';"
+  release_command = "python -c 'print(\"API mode only - Scraper disabled\")'"
 
-[processes]
-  app = "python main.py --api-only"
+[[processes]]
+  name = "app"
+  cmd = "python main.py --api-only"
+  memory = 256
