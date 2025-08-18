@@ -7,7 +7,7 @@ primary_region = "gru"
 [env]
   PORT = "8000"
   PYTHONUNBUFFERED = "1"
-  API_ONLY = "true"
+  POSTGRES_CONNECTION_STRING = "postgresql://postgres:postgres@localhost:5432/natal_prefeitura"
 
 [http_service]
   internal_port = 8000
