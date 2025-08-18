@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import DatabaseManager
+from core.database import DatabaseManager
 
 logging.basicConfig(
     level=logging.INFO,
