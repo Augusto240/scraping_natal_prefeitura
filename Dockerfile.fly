@@ -1,0 +1,20 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+COPY start.sh .
+COPY api.py .
+COPY core/ ./core/
+COPY services/ ./services/
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN chmod +x start.sh
+
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8000
+
+EXPOSE 8000
+
+ENTRYPOINT ["/app/start.sh"]
