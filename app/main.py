@@ -78,13 +78,12 @@ def run_full_process(headless=True):
 
 def run_api_only():
     try:
-        from api import app
-        
         logger.info("🌐 Iniciando apenas a API")
 
         try:
             import uvicorn
-            uvicorn.run(app, host="0.0.0.0", port=8000)
+            port = int(os.environ.get("PORT", "8000"))
+            uvicorn.run("api:app", host="0.0.0.0", port=port) 
         except ImportError:
             logger.warning("⚠️ Uvicorn não encontrado, tentando executar com servidor simples")
             print("Para executar a API, instale uvicorn: pip install uvicorn")
