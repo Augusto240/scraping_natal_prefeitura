@@ -3,14 +3,21 @@ FROM python:3.9-slim
 WORKDIR /app
 
 COPY requirements.txt .
-COPY start.sh .
-COPY api.py .
-COPY core/ ./core/
-COPY services/ ./services/
-
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN chmod +x start.sh
+COPY app/ /app/app/
+
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "🚀 Iniciando API na porta ${PORT:-8000}"\n\
+echo "📂 Listagem de arquivos:"\n\
+ls -la\n\
+echo "📂 Listagem do diretório app:"\n\
+ls -la app/\n\
+# Iniciar a aplicação com o caminho correto para o módulo\n\
+python -m uvicorn app.api:app --host 0.0.0.0 --port ${PORT:-8000}' > /app/start.sh
+
+RUN chmod +x /app/start.sh
 
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000

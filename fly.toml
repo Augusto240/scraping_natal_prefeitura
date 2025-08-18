@@ -7,6 +7,7 @@ primary_region = "gru"
 [env]
   PORT = "8000"
   PYTHONUNBUFFERED = "1"
+  API_ONLY = "true"
 
 [http_service]
   internal_port = 8000
