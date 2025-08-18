@@ -51,4 +51,4 @@ COPY app/ /app/
 
 RUN mkdir -p /app/downloads && chmod -R 777 /app/downloads
 
-CMD ["python", "main.py"]
+CMD ["python", "main.py", "--api-only"]
