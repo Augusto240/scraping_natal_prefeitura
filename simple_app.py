@@ -37,6 +37,22 @@ logger.info(f"Usando string de conexão: {DATABASE_URL.split('@')[0]}@******")
 
 try:
     engine = create_engine(DATABASE_URL)
+    
+    # NOVO: Bloco de diagnóstico detalhado para depuração
+    try:
+        # Apenas para depuração
+        import sqlalchemy
+        test_engine = sqlalchemy.create_engine(DATABASE_URL)
+        with test_engine.connect() as conn:
+            result = conn.execute("SELECT 1").fetchone()
+            logger.info(f"✅ TESTE DE CONEXÃO BEM SUCEDIDO: {result}")
+    except Exception as e:
+        logger.error(f"❌ ERRO DE CONEXÃO DETALHADO: {str(e)}")
+        logger.error(f"TIPO DE ERRO: {type(e).__name__}")
+        # Mais detalhes se for disponível
+        if hasattr(e, 'orig'):
+            logger.error(f"ERRO ORIGINAL: {e.orig}")
+    
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base = declarative_base()
 
@@ -79,7 +95,7 @@ except Exception as e:
     logger.warning(f"⚠️ Erro ao configurar banco de dados: {str(e)}")
     logger.info("API funcionará em modo demonstração")
 
-# Dependência para obter a sessão do DB - CORRIGIDO!
+# Dependência para obter a sessão do DB
 def get_db():
     if not has_database:
         # Corrigido: Sempre use yield em vez de return em dependências com yield
@@ -126,6 +142,7 @@ async def health_check():
         "database": db_status,
         "timestamp": datetime.now().isoformat(),
         "environment": os.environ.get("ENVIRONMENT", "production"),
+        "connection_string": DATABASE_URL.split('@')[0] + '@******',
         "modo": "demonstração" if not has_database else "produção"
     }
 
