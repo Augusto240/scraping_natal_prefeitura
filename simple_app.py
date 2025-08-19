@@ -26,6 +26,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+has_database = False
+SessionLocal = None
+Publication = None
+
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./test.db")
 logger.info(f"Usando string de conexão: {DATABASE_URL.split('@')[0]}@******")
 
@@ -57,25 +61,32 @@ try:
             }
 
     try:
+        # Testar conexão
+        with engine.connect() as conn:
+            conn.execute("SELECT 1")
         Base.metadata.create_all(bind=engine)
-        logger.info("Tabelas criadas ou verificadas com sucesso")
+        logger.info("✅ Conexão com banco de dados bem-sucedida e tabelas criadas")
+        has_database = True
     except Exception as e:
-        logger.warning(f"Não foi possível criar tabelas: {str(e)}")
-        logger.info("Continuando sem persistência de dados")
+        logger.warning(f"⚠️ Não foi possível conectar ao banco ou criar tabelas: {str(e)}")
+        logger.info("Continuando em modo demonstração sem persistência")
 
 except Exception as e:
-    logger.warning(f"Erro ao configurar banco de dados: {str(e)}")
-    logger.info("API funcionará sem persistência de dados")
+    logger.warning(f"⚠️ Erro ao configurar banco de dados: {str(e)}")
+    logger.info("API funcionará em modo demonstração")
 
 def get_db():
+    if not has_database:
+        return None
+    
     try:
         db = SessionLocal()
         yield db
     except Exception as e:
         logger.error(f"Erro ao conectar ao banco de dados: {str(e)}")
-        raise HTTPException(status_code=500, detail="Erro de conexão com banco de dados")
     finally:
-        db.close()
+        if 'db' in locals():
+            db.close()
 
 @app.get("/")
 async def root():
@@ -93,11 +104,12 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    db_status = "ok"
+    db_status = "ok" if has_database else "error"
     try:
-        db = SessionLocal()
-        db.execute("SELECT 1")
-        db.close()
+        if has_database:
+            db = SessionLocal()
+            db.execute("SELECT 1")
+            db.close()
     except Exception as e:
         logger.error(f"Verificação de saúde falhou: {str(e)}")
         db_status = "error"
@@ -106,11 +118,38 @@ async def health_check():
         "status": "ok",
         "database": db_status,
         "timestamp": datetime.now().isoformat(),
-        "environment": os.environ.get("ENVIRONMENT", "production")
+        "environment": os.environ.get("ENVIRONMENT", "production"),
+        "modo": "demonstração" if not has_database else "produção"
     }
 
 @app.get("/arquivos")
 async def list_publications(db: Session = Depends(get_db)):
+    if not has_database:
+        return {
+            "total": 2,
+            "publicacoes": [
+                {
+                    "id": 1,
+                    "title": "Demonstrativo Financeiro - Agosto 2025",
+                    "publication_date": "2025-08-15",
+                    "competence": "2025-08",
+                    "original_link": "https://exemplo.com/demo1",
+                    "file_url": "https://exemplo.com/arquivo1.pdf",
+                    "created_at": "2025-08-15 10:30:00"
+                },
+                {
+                    "id": 2,
+                    "title": "Relatório de Receitas - Julho 2025",
+                    "publication_date": "2025-07-10",
+                    "competence": "2025-07",
+                    "original_link": "https://exemplo.com/demo2",
+                    "file_url": "https://exemplo.com/arquivo2.pdf",
+                    "created_at": "2025-07-10 14:45:00"
+                }
+            ],
+            "modo": "demonstração - sem conexão com banco de dados"
+        }
+    
     try:
         publications = db.query(Publication).order_by(Publication.publication_date.desc()).all()
         return {
@@ -122,7 +161,8 @@ async def list_publications(db: Session = Depends(get_db)):
         return {
             "total": 0,
             "publicacoes": [],
-            "message": "Modo de demonstração - sem conexão com banco de dados"
+            "erro": str(e),
+            "modo": "erro - problema ao acessar banco de dados"
         }
 
 @app.get("/arquivos/{competencia}")
@@ -134,10 +174,41 @@ async def get_publications_by_competence(competencia: str, db: Session = Depends
             detail="Formato de competência inválido. Use o formato YYYY-MM (ex: 2025-07)"
         )
     
+    if not has_database:
+        demo_data = [
+            {
+                "id": 1,
+                "title": "Demonstrativo Financeiro - Agosto 2025",
+                "publication_date": "2025-08-15",
+                "competence": "2025-08",
+                "original_link": "https://exemplo.com/demo1",
+                "file_url": "https://exemplo.com/arquivo1.pdf",
+                "created_at": "2025-08-15 10:30:00"
+            },
+            {
+                "id": 2,
+                "title": "Relatório de Receitas - Julho 2025",
+                "publication_date": "2025-07-10",
+                "competence": "2025-07",
+                "original_link": "https://exemplo.com/demo2",
+                "file_url": "https://exemplo.com/arquivo2.pdf",
+                "created_at": "2025-07-10 14:45:00"
+            }
+        ]
+        
+        filtered = [item for item in demo_data if item["competence"] == competencia]
+        
+        return {
+            "competencia": competencia,
+            "total": len(filtered),
+            "publicacoes": filtered,
+            "modo": "demonstração - sem conexão com banco de dados"
+        }
+    
     try:
         year, month = map(int, competencia.split("-"))
         datetime(year, month, 1)
-
+        
         try:
             publications = db.query(Publication).filter(
                 Publication.competence == competencia
@@ -154,7 +225,8 @@ async def get_publications_by_competence(competencia: str, db: Session = Depends
                 "competencia": competencia,
                 "total": 0,
                 "publicacoes": [],
-                "message": "Modo de demonstração - sem conexão com banco de dados"
+                "erro": str(e),
+                "modo": "erro - problema ao acessar banco de dados"
             }
     except ValueError:
         raise HTTPException(status_code=400, detail="Data inválida")
