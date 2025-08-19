@@ -26,10 +26,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Variável para controle de estado
 has_database = False
 SessionLocal = None
 Publication = None
 
+# Configuração do banco de dados
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./test.db")
 logger.info(f"Usando string de conexão: {DATABASE_URL.split('@')[0]}@******")
 
@@ -38,6 +40,7 @@ try:
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base = declarative_base()
 
+    # Definir modelo
     class Publication(Base):
         __tablename__ = "publications"
         
@@ -60,6 +63,7 @@ try:
                 "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S")
             }
 
+    # Testar conexão e criar tabelas
     try:
         # Testar conexão
         with engine.connect() as conn:
@@ -75,9 +79,12 @@ except Exception as e:
     logger.warning(f"⚠️ Erro ao configurar banco de dados: {str(e)}")
     logger.info("API funcionará em modo demonstração")
 
+# Dependência para obter a sessão do DB - CORRIGIDO!
 def get_db():
     if not has_database:
-        return None
+        # Corrigido: Sempre use yield em vez de return em dependências com yield
+        yield None
+        return
     
     try:
         db = SessionLocal()
@@ -124,7 +131,8 @@ async def health_check():
 
 @app.get("/arquivos")
 async def list_publications(db: Session = Depends(get_db)):
-    if not has_database:
+    if db is None:
+        # Retornar dados de demonstração
         return {
             "total": 2,
             "publicacoes": [
@@ -167,6 +175,7 @@ async def list_publications(db: Session = Depends(get_db)):
 
 @app.get("/arquivos/{competencia}")
 async def get_publications_by_competence(competencia: str, db: Session = Depends(get_db)):
+    # Validar formato da competência (YYYY-MM)
     import re
     if not re.match(r"^\d{4}-\d{2}$", competencia):
         raise HTTPException(
@@ -174,7 +183,8 @@ async def get_publications_by_competence(competencia: str, db: Session = Depends
             detail="Formato de competência inválido. Use o formato YYYY-MM (ex: 2025-07)"
         )
     
-    if not has_database:
+    if db is None:
+        # Retornar dados de demonstração filtrados
         demo_data = [
             {
                 "id": 1,
