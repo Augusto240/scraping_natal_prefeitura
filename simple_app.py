@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import uvicorn
@@ -44,7 +44,8 @@ try:
         import sqlalchemy
         test_engine = sqlalchemy.create_engine(DATABASE_URL)
         with test_engine.connect() as conn:
-            result = conn.execute("SELECT 1").fetchone()
+            # CORRIGIDO: Usando text() para criar um objeto SQL executável
+            result = conn.execute(text("SELECT 1")).fetchone()
             logger.info(f"✅ TESTE DE CONEXÃO BEM SUCEDIDO: {result}")
     except Exception as e:
         logger.error(f"❌ ERRO DE CONEXÃO DETALHADO: {str(e)}")
@@ -83,7 +84,8 @@ try:
     try:
         # Testar conexão
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            # CORRIGIDO: Usando text() para criar um objeto SQL executável
+            conn.execute(text("SELECT 1"))
         Base.metadata.create_all(bind=engine)
         logger.info("✅ Conexão com banco de dados bem-sucedida e tabelas criadas")
         has_database = True
@@ -131,7 +133,8 @@ async def health_check():
     try:
         if has_database:
             db = SessionLocal()
-            db.execute("SELECT 1")
+            # CORRIGIDO: Usando text() para criar um objeto SQL executável
+            db.execute(text("SELECT 1"))
             db.close()
     except Exception as e:
         logger.error(f"Verificação de saúde falhou: {str(e)}")
